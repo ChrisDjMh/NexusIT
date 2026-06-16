@@ -8,13 +8,16 @@ import { TicketDetail } from "./components/TicketDetail";
 import { Roadmap } from "./components/Roadmap";
 import { QuickCreate } from "./components/QuickCreate";
 import { type Ticket, type EstadoTicket, type Usuario } from "./components/data";
+import { API_URL } from './config';
 
-const TITULOS_VISTA: Record<VistaNav, { titulo: string; subtitulo?: string }> = {
-  inicio:        { titulo: 'Inicio',             subtitulo: 'Sprint 14 · 1–17 Jun' },
-  tickets:       { titulo: 'Cola de Tickets',    subtitulo: '8 tickets · 2 críticos' },
-  cronograma:    { titulo: 'Cronograma',          subtitulo: 'Q2–Q3 2026' },
-  sprint:        { titulo: 'Tablero de Sprint',  subtitulo: 'Sprint 14' },
-  configuracion: { titulo: 'Configuración',      subtitulo: 'Espacio de trabajo y preferencias' },
+// 1. CORREGIDO: Declaramos el tipo extendido para que coincida con el backend y las otras vistas
+type TicketFrontend = Ticket & { dbId?: number };
+
+const TITULOS_VISTA: Record<Exclude<VistaNav, 'configuracion'>, { titulo: string; subtitulo?: string }> = {
+  inicio:     { titulo: 'Inicio',             subtitulo: 'Sprint 14 · 1–17 Jun' },
+  tickets:    { titulo: 'Cola de Tickets',    subtitulo: '8 tickets · 2 críticos' },
+  cronograma: { titulo: 'Cronograma',          subtitulo: 'Q2–Q3 2026' },
+  sprint:     { titulo: 'Tablero de Sprint',  subtitulo: 'Sprint 14' },
 };
 
 export default function App() {
@@ -22,9 +25,12 @@ export default function App() {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [sidebarColapsado, setSidebarColapsado] = useState(false);
   const [vistaActiva, setVistaActiva] = useState<VistaNav>('inicio');
-  const [ticketSeleccionado, setTicketSeleccionado] = useState<Ticket | null>(null);
+  
+  // 2. CORREGIDO: Cambiamos el tipo del estado para aceptar el formato extendido de la base de datos
+  const [ticketSeleccionado, setTicketSeleccionado] = useState<TicketFrontend | null>(null);
+  
   const [quickCreateAbierto, setQuickCreateAbierto] = useState(false);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<TicketFrontend[]>([]);
   const [recargarTickets, setRecargarTickets] = useState<(() => void) | null>(null);
 
   // Control del modo oscuro en el HTML
@@ -52,7 +58,7 @@ export default function App() {
 
     const cargarTickets = async () => {
       try {
-        const respuesta = await fetch('http://localhost:5000/api/tickets');
+        const respuesta = await fetch(`${API_URL}/tickets`);
         const datos = await respuesta.json();
         if (Array.isArray(datos)) {
           setTickets(datos);
@@ -67,48 +73,53 @@ export default function App() {
     cargarTickets();
   }, [usuario]);
 
-  // Manejo del Login asíncrono con manejo de errores robusto
+  // Manejo del Login asíncrono
   const handleLogin = async (datosLogin: { email: string; contrasena: string }) => {
-    try {
-      const respuesta = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: datosLogin.email,
-          contrasena: datosLogin.contrasena
-        })
-      });
-      
-      if (!respuesta.ok) {
-        throw new Error(`Error en el servidor: ${respuesta.status}`);
-      }
-
-      const datos = await respuesta.json();
-      
-      if (datos.success && datos.usuario) {
-        // Mapeamos de forma segura verificando nulos o indefinidos
-        const usuarioLogueado: Usuario = {
-          id: datos.usuario.id || "0",
-          nombre: datos.usuario.nombre || "Usuario",
-          email: datos.usuario.email || datosLogin.email,
-          rol: datos.usuario.rol === 'admin' ? 'admin' : 'ingeniero',
-          cargo: datos.usuario.puesto || 'Ingeniero de Software',
-          iniciales: (datos.usuario.nombre || "US").substring(0, 2).toUpperCase(),
-          color: datos.usuario.rol === 'admin' ? '#3b82f6' : '#8b5cf6'
-        };
-
-        localStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
-        setUsuario(usuarioLogueado);
-        setVistaActiva('inicio');
-      } else {
-        alert(datos.message || 'Credenciales incorrectas');
-      }
-    } catch (error) {
-      console.error("Error conectando al backend:", error);
-      alert("Error de conexión con el backend (puerto 5000). Revisa la consola del navegador (F12) para más detalles.");
+  try {
+    const respuesta = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: datosLogin.email,
+        contrasena: datosLogin.contrasena
+      })
+    });
+    
+    // 🔍 SI LAS CREDENCIALES ESTÁN MAL: Leemos la respuesta del backend
+    if (respuesta.status === 401) {
+      const datosError = await respuesta.json();
+      alert(`NexusIT: ${datosError.message || 'Credenciales incorrectas'}. Revisa el correo seleccionado o la contraseña.`);
+      return; // Detiene el flujo de forma segura
     }
-  };
 
+    if (!respuesta.ok) {
+      throw new Error(`Error en el servidor: ${respuesta.status}`);
+    }
+
+    const datos = await respuesta.json();
+    
+    if (datos.success && datos.usuario) {
+      const usuarioLogueado: Usuario = {
+        id: datos.usuario.id || "0",
+        nombre: datos.usuario.nombre || "Usuario",
+        email: datos.usuario.email || datosLogin.email,
+        rol: datos.usuario.rol === 'admin' ? 'admin' : 'ingeniero',
+        cargo: datos.usuario.puesto || 'Ingeniero de Software',
+        iniciales: (datos.usuario.nombre || "US").substring(0, 2).toUpperCase(),
+        color: datos.usuario.rol === 'admin' ? '#3b82f6' : '#8b5cf6'
+      };
+
+      localStorage.setItem('usuario', JSON.stringify(usuarioLogueado));
+      setUsuario(usuarioLogueado);
+      setVistaActiva('inicio');
+    } else {
+      alert(datos.message || 'Credenciales incorrectas');
+    }
+  } catch (error) {
+    console.error("Error conectando al backend:", error);
+    alert("Error de comunicación física con el backend. Revisa la consola del navegador.");
+  }
+};
   const handleCerrarSesion = () => {
     localStorage.removeItem('usuario');
     setUsuario(null);
@@ -117,7 +128,8 @@ export default function App() {
     setVistaActiva('inicio');
   };
 
-  const handleTicketSelect = (ticketOrId: Ticket | string) => {
+  // 3. CORREGIDO: Adaptamos la firma para aceptar tanto el objeto extendido como strings de ID mas limpiamente
+  const handleTicketSelect = (ticketOrId: TicketFrontend | string) => {
     if (typeof ticketOrId === 'string') {
       const encontrado = tickets.find(t => t.id === ticketOrId);
       if (encontrado) setTicketSeleccionado(encontrado);
@@ -146,7 +158,7 @@ export default function App() {
     );
   }
 
-  const { titulo, subtitulo } = TITULOS_VISTA[vistaActiva] || { titulo: 'NexusIT' };
+  const { titulo, subtitulo } = TITULOS_VISTA[vistaActiva as Exclude<VistaNav, 'configuracion'>] || { titulo: 'NexusIT' };
  
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
@@ -211,7 +223,6 @@ export default function App() {
               />
             )}
             {vistaActiva === 'cronograma' && <Roadmap />}
-            {vistaActiva === 'configuracion' && <ConfiguracionVista usuario={usuario} />}
           </div>
 
           {ticketSeleccionado && (
@@ -234,155 +245,10 @@ export default function App() {
         <QuickCreate
           abierto={quickCreateAbierto}
           onCerrar={() => setQuickCreateAbierto(false)}
-          usuario={usuario}               // <-- agrega esto
-          onTicketCreado={recargarTickets ?? undefined}  // para que recargue el tablero
+          usuario={usuario}
+          onTicketCreado={recargarTickets ?? undefined}
         />
       )}
-    </div>
-  );
-}
-
-function ConfiguracionVista({ usuario }: { usuario: Usuario }) {
-  const esAdmin = usuario.rol === 'admin';
-  const [proyectos, setProyectos] = useState<{ id: number; nombre: string; progreso: number; color: string }[]>([]);
-  const [cargando, setCargando] = useState(true);
-
-  const [toggles, setToggles] = useState<Record<string, boolean>>({
-    'Alertas de tickets críticos': true,
-    'Ticket asignado a mí': true,
-    'Resumen semanal de sprint': false,
-  });
-
-  useEffect(() => {
-    fetch('http://localhost:5000/api/proyectos/detalle')
-      .then(r => r.json())
-      .then(data => { setProyectos(data); setCargando(false); })
-      .catch(() => setCargando(false));
-  }, []);
-
-  return (
-    <div className="flex-1 overflow-y-auto p-5 max-w-2xl">
-      {/* Tarjeta de perfil */}
-      <div
-        className="flex items-center gap-3 p-4 rounded-xl border mb-5"
-        style={{ background: `${usuario.color}0d`, borderColor: `${usuario.color}30` }}
-      >
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: usuario.color, fontSize: 13, color: '#fff', fontWeight: 700 }}
-        >
-          {usuario.iniciales}
-        </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>{usuario.nombre}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{usuario.cargo}</div>
-        </div>
-        <span
-          className="ml-auto px-2.5 py-1 rounded-full"
-          style={{
-            fontSize: 11, fontWeight: 600,
-            background: esAdmin ? 'rgba(59,130,246,0.15)' : 'rgba(139,92,246,0.15)',
-            color: esAdmin ? '#3b82f6' : '#8b5cf6',
-          }}
-        >
-          {esAdmin ? '🔑 Administrador' : '👤 Ingeniero'}
-        </span>
-      </div>
-
-      {!esAdmin && (
-        <div className="px-4 py-3 rounded-lg border mb-5" style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' }}>
-          <p style={{ fontSize: 12, color: '#f59e0b' }}>
-            ⚠️ Como ingeniero, solo puedes cambiar el estado de tickets asignados a ti y añadir comentarios.
-          </p>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-5">
-        {/* Perfil */}
-        <SeccionConfig titulo="Perfil">
-          <FilaConfig etiqueta="Nombre" valor={usuario.nombre} />
-          <FilaConfig etiqueta="Cargo" valor={usuario.cargo} />
-          <FilaConfig etiqueta="Correo" valor={usuario.email} />
-          <FilaConfig etiqueta="Rol" valor={esAdmin ? 'Administrador' : 'Ingeniero'} />
-        </SeccionConfig>
-
-        {/* Proyectos — solo admin */}
-        {esAdmin && (
-          <SeccionConfig titulo="Proyectos activos">
-            {cargando ? (
-              <div className="px-5 py-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Cargando...</div>
-            ) : proyectos.length === 0 ? (
-              <div className="px-5 py-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Sin proyectos</div>
-            ) : (
-              proyectos.map((p, i, arr) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between px-5 py-3"
-                  style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-                    <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{p.nombre}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
-                      <div className="h-full rounded-full" style={{ width: `${p.progreso}%`, background: p.color }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--muted-foreground)', minWidth: 32, textAlign: 'right' }}>
-                      {p.progreso}%
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </SeccionConfig>
-        )}
-
-        {/* Notificaciones */}
-        <SeccionConfig titulo="Notificaciones">
-          {Object.entries(toggles).map(([etiqueta, valor], i, arr) => (
-            <div
-              key={etiqueta}
-              className="flex items-center justify-between px-5 py-3"
-              style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}
-            >
-              <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{etiqueta}</span>
-              <button
-                onClick={() => setToggles(prev => ({ ...prev, [etiqueta]: !prev[etiqueta] }))}
-                className="w-9 h-5 rounded-full relative transition-colors"
-                style={{ background: valor ? 'var(--color-cyber-blue)' : 'var(--muted)' }}
-              >
-                <span
-                  className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-                  style={{ background: '#fff', left: valor ? '18px' : '2px' }}
-                />
-              </button>
-            </div>
-          ))}
-        </SeccionConfig>
-      </div>
-    </div>
-  );
-}
-
-function SeccionConfig({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-      <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-        <h3 style={{ fontSize: 11, fontWeight: 700, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {titulo}
-        </h3>
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function FilaConfig({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return (
-    <div className="flex items-center justify-between px-5 py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-      <span style={{ fontSize: 13, color: 'var(--muted-foreground)' }}>{etiqueta}</span>
-      <span style={{ fontSize: 13, color: 'var(--foreground)', fontWeight: 500 }}>{valor}</span>
     </div>
   );
 }

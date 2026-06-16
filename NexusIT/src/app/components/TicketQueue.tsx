@@ -4,7 +4,7 @@ import {
   Clock, User, ChevronDown, AlertTriangle
 } from "lucide-react";
 import { COLORES_PRIORIDAD, COLUMNAS_ESTADO, ESTADO_INGENIERO_PERMITIDO, type Ticket, type EstadoTicket, type Prioridad, type Usuario } from "./data";
-
+import { API_URL } from '../config';
 export type TicketFrontend = Ticket & { dbId: number };
 
 interface TicketQueueProps {
@@ -110,7 +110,6 @@ function TarjetaKanban({ ticket, onClick, usuario, onCambiarEstado }: {
     ? COLUMNAS_ESTADO.filter(e => e !== ticket.estado)
     : [];
 
-  // 👈 LÓGICA DE VENCIMIENTO
   const hoy = new Date().toISOString().split('T')[0];
   const esVencido = ticket.fechaVencimiento && ticket.fechaVencimiento < hoy && ticket.estado !== 'Terminado';
 
@@ -119,7 +118,7 @@ function TarjetaKanban({ ticket, onClick, usuario, onCambiarEstado }: {
       className="rounded-lg border p-3 cursor-pointer transition-all hover:shadow-lg group"
       style={{ 
         background: 'var(--card)', 
-        borderColor: esVencido ? '#ef444450' : 'var(--border)' // Borde rojizo si está vencido
+        borderColor: esVencido ? '#ef444450' : 'var(--border)' 
       }}
       onClick={onClick}
     >
@@ -128,7 +127,6 @@ function TarjetaKanban({ ticket, onClick, usuario, onCambiarEstado }: {
           <span className="mono" style={{ fontSize: 10, color: 'var(--color-cyber-blue)', fontWeight: 500 }}>
             {ticket.id}
           </span>
-          {/* 👈 ETIQUETA ROJA DE VENCIDO */}
           {esVencido && (
             <span 
               className="px-1.5 py-[1px] rounded flex items-center gap-1" 
@@ -197,7 +195,6 @@ function TarjetaKanban({ ticket, onClick, usuario, onCambiarEstado }: {
 }
 
 function FilaTabla({ ticket, onClick }: { ticket: TicketFrontend; onClick: () => void }) {
-  // 👈 LÓGICA DE VENCIMIENTO PARA LA TABLA
   const hoy = new Date().toISOString().split('T')[0];
   const esVencido = ticket.fechaVencimiento && ticket.fechaVencimiento < hoy && ticket.estado !== 'Terminado';
 
@@ -207,7 +204,7 @@ function FilaTabla({ ticket, onClick }: { ticket: TicketFrontend; onClick: () =>
       className="border-b cursor-pointer hover:bg-[var(--muted)] transition-colors"
       style={{ 
         borderColor: 'var(--border)',
-        background: esVencido ? '#ef444405' : 'transparent' // Fondo super ligero rojo si está vencido
+        background: esVencido ? '#ef444405' : 'transparent' 
       }}
     >
       <td className="px-3 py-2.5">
@@ -383,7 +380,8 @@ export function TicketQueue({ onTicketSelect, usuario, onCargarTickets }: Ticket
   const cargarTickets = useCallback(async () => {
     try {
       setCargando(true);
-      const res = await fetch('http://localhost:5000/api/tickets');
+      // 1. CORREGIDO: Se cambiaron las comillas simples por backticks para que actúe como template string
+      const res = await fetch(`${API_URL}/tickets`);
       if (!res.ok) throw new Error('Error en la red');
       const data = await res.json();
       setTickets(data.map(mapearTicketDBaFrontend));
@@ -416,7 +414,8 @@ export function TicketQueue({ onTicketSelect, usuario, onCargarTickets }: Ticket
       setTickets(prev => prev.map(t =>
         t.id === ticketIdFront ? { ...t, estado: nuevoEstadoFront } : t
       ));
-      await fetch(`http://localhost:5000/api/tickets/${ticket.dbId}/estado`, {
+      // 2. CORREGIDO: Se reemplazó el string fijo "http://localhost:5000/api" por la variable global "API_URL"
+      await fetch(`${API_URL}/tickets/${ticket.dbId}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nuevo_estado: mapaEstadosInverso[nuevoEstadoFront] })
@@ -434,7 +433,7 @@ export function TicketQueue({ onTicketSelect, usuario, onCargarTickets }: Ticket
   if (filtroAsignadoAMi) filtrados = filtrados.filter(t => t.asignado.nombre === usuario.nombre);
   if (filtroProyecto) filtrados = filtrados.filter(t => t.proyecto === filtroProyecto);
 
-  const proyectos = [...new Set(tickets.map(t => t.proyecto))].filter(Boolean); // Filter Boolean previene vacíos
+  const proyectos = [...new Set(tickets.map(t => t.proyecto))].filter(Boolean);
 
   if (cargando) {
     return (

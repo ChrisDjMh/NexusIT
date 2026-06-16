@@ -8,21 +8,20 @@ import {
   COLORES_PRIORIDAD, COLUMNAS_ESTADO, ESTADO_INGENIERO_PERMITIDO,
   EQUIPO, type Usuario,
 } from "./data";
+// 1. CORREGIDO: Importación de la constante global API_URL desde la configuración común
+import { API_URL } from '../config';
 
-// Usamos el mismo tipo extendido que creamos para el Kanban
 type TicketFrontend = Ticket & { dbId?: number };
 
 interface TicketDetailProps {
   ticket: TicketFrontend;
   onClose: () => void;
   usuario: Usuario;
-  // Opcional: si quieres que el tablero principal se recargue al cerrar este panel
   onTicketUpdated?: () => void; 
 }
 
 const PRIORIDADES: Prioridad[] = ['Crítico', 'Alto', 'Medio', 'Bajo'];
 
-// --- MAPEOS DE DATOS ---
 const mapaEstadosInverso: Record<string, string> = {
   'Backlog': 'backlog',
   'En Progreso': 'en_progreso',
@@ -38,7 +37,6 @@ const mapaPrioridadInverso: Record<string, string> = {
   'Bajo': 'baja'
 };
 
-// ... (Mantén tu componente IconoActividad exactamente igual) ...
 function IconoActividad({ tipo }: { tipo: string }) {
   const iconos: Record<string, React.ElementType> = {
     comentario: MessageSquare,
@@ -75,7 +73,7 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
     setPrioridad(ticket.prioridad);
     setAsignado(ticket.asignado.nombre);
     setRegistros(ticket.registros || []);
-    setComentario(''); // Opcional: limpia el campo de comentario al cambiar de ticket
+    setComentario(''); 
   }, [ticket]);
 
   const esAdmin = usuario.rol === 'admin';
@@ -85,7 +83,7 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
   const estadosDisponibles: EstadoTicket[] = esAdmin
     ? COLUMNAS_ESTADO
     : [estado, ...(ESTADO_INGENIERO_PERMITIDO[estado] || [])].filter(
-        (v, i, arr) => arr.indexOf(v) === i  // deduplica
+        (v, i, arr) => arr.indexOf(v) === i  
       );
 
   const progresoPct = ticket.subtareas?.total > 0
@@ -96,12 +94,13 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
 
   const cambiarEstadoBD = async (nuevoEstado: string) => {
     const estadoFront = nuevoEstado as EstadoTicket;
-    setEstado(estadoFront); // Actualización optimista
+    setEstado(estadoFront); 
 
-    if (!ticket.dbId) return; // Por si es un ticket estático de prueba
+    if (!ticket.dbId) return; 
 
     try {
-      await fetch(`http://localhost:5000/api/tickets/${ticket.dbId}/estado`, {
+      // 2. CORREGIDO: Se reemplazó la URL fija por `${API_URL}`
+      await fetch(`${API_URL}/tickets/${ticket.dbId}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nuevo_estado: mapaEstadosInverso[estadoFront] })
@@ -112,19 +111,19 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
     }
   };
 
- const cambiarPrioridadBD = async (nuevaPrioridad: string) => {
+  const cambiarPrioridadBD = async (nuevaPrioridad: string) => {
     const prioridadFront = nuevaPrioridad as Prioridad;
-    setPrioridad(prioridadFront); // Actualización visual rápida
+    setPrioridad(prioridadFront); 
 
     if (!ticket.dbId) return;
 
     try {
-      await fetch(`http://localhost:5000/api/tickets/${ticket.dbId}/prioridad`, {
+      // 3. CORREGIDO: Se reemplazó la URL fija por `${API_URL}`
+      await fetch(`${API_URL}/tickets/${ticket.dbId}/prioridad`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nueva_prioridad: mapaPrioridadInverso[prioridadFront] })
       });
-      // Si pasaste esta prop desde el padre, recargará el tablero de fondo
       if (onTicketUpdated) onTicketUpdated(); 
     } catch (error) {
       console.error("Error al guardar prioridad:", error);
@@ -132,41 +131,39 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
   };
 
   const cambiarAsignadoBD = async (nuevoAsignado: string) => {
-  setAsignado(nuevoAsignado);
+    setAsignado(nuevoAsignado);
 
-  if (!ticket.dbId) return;
+    if (!ticket.dbId) return;
 
-  const usuarioSeleccionado = EQUIPO.find(u => u.nombre === nuevoAsignado);
-  
-  // 👇 Agrega esto temporalmente para ver qué está pasando
-  console.log('Buscando:', nuevoAsignado);
-  console.log('EQUIPO:', EQUIPO);
-  console.log('Encontrado:', usuarioSeleccionado);
+    const usuarioSeleccionado = EQUIPO.find(u => u.nombre === nuevoAsignado);
+    
+    console.log('Buscando:', nuevoAsignado);
+    console.log('EQUIPO:', EQUIPO);
+    console.log('Encontrado:', usuarioSeleccionado);
 
-  if (!usuarioSeleccionado) {
-    console.error(`Usuario "${nuevoAsignado}" no encontrado en EQUIPO`);
-    return;
-  }
+    if (!usuarioSeleccionado) {
+      console.error(`Usuario "${nuevoAsignado}" no encontrado en EQUIPO`);
+      return;
+    }
 
-  try {
-    const res = await fetch(`http://localhost:5000/api/tickets/${ticket.dbId}/asignado`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nuevo_asignado_id: Number(usuarioSeleccionado.id) })
-
-    });
-    const data = await res.json();
-    console.log('Respuesta del servidor:', data);
-    if (onTicketUpdated) onTicketUpdated();
-  } catch (error) {
-    console.error("Error al guardar asignado:", error);
-  }
-};
+    try {
+      // 4. CORREGIDO: Se reemplazó la URL fija por `${API_URL}`
+      const res = await fetch(`${API_URL}/tickets/${ticket.dbId}/asignado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo_asignado_id: Number(usuarioSeleccionado.id) })
+      });
+      const data = await res.json();
+      console.log('Respuesta del servidor:', data);
+      if (onTicketUpdated) onTicketUpdated();
+    } catch (error) {
+      console.error("Error al guardar asignado:", error);
+    }
+  };
 
   const agregarComentario = () => {
     if (!comentario.trim()) return;
     
-    // Visualmente lo agregamos:
     setRegistros(prev => [{
       id: Date.now().toString(),
       usuario: usuario.nombre,
@@ -175,9 +172,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
       tiempo: 'ahora mismo',
       tipo: 'comentario' as const,
     }, ...prev]);
-    
-    /* NOTA: Para que persista, requieres una tabla en MySQL e invocar un POST aquí */
-    // fetch('http://localhost:5000/api/comentarios', { ... })
     
     setComentario('');
   };
@@ -226,9 +220,9 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
         </button>
       </div>
 
-      {/* Cuerpo: dividido */}
+      {/* Cuerpo */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Izquierda: descripción + actividad */}
+        {/* Izquierda */}
         <div className="flex-1 flex flex-col overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
           <div className="flex-1 overflow-y-auto p-5">
             <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.4, marginBottom: 16 }}>
@@ -242,6 +236,7 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
             >
               {(ticket.descripcion || "Sin descripción").split('\n').map((linea, i) => {
                 if (linea.startsWith('**') && linea.endsWith('**')) {
+                  // 5. CORREGIDO: Expresión regular arreglada a /\*\*/g para evitar fallos de compilación
                   return <p key={i} style={{ fontWeight: 700, marginTop: 8 }}>{linea.replace(/\*\*/g, '')}</p>;
                 }
                 if (/^\d\. /.test(linea)) {
@@ -272,7 +267,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
                 Actividad
               </h3>
 
-              {/* Campo de comentario */}
               <div className="flex gap-2.5 mb-4">
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
@@ -309,7 +303,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
                 </div>
               </div>
 
-              {/* Registros de actividad */}
               <div className="flex flex-col gap-3">
                 {registros.map(log => (
                   <div key={log.id} className="flex gap-2.5">
@@ -335,7 +328,7 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
           </div>
         </div>
 
-        {/* Derecha: metadatos */}
+        {/* Derecha */}
         <div className="overflow-y-auto p-5 flex-shrink-0" style={{ width: 204 }}>
           <h3
             style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}
@@ -343,7 +336,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
             Detalles
           </h3>
 
-          {/* Estado CONECTADO A BD */}
           <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontWeight: 500 }}>Estado</span>
             {puedeEditar ? (
@@ -357,7 +349,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
             )}
           </div>
 
-          {/* Prioridad */}
           <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontWeight: 500 }}>Prioridad</span>
             {esAdmin ? (
@@ -372,7 +363,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
             )}
           </div>
 
-          {/* Asignado */}
           <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'var(--border)' }}>
             <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontWeight: 500 }}>Asignado</span>
             {esAdmin ? (
@@ -411,7 +401,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
             </div>
           </div>
 
-          {/* Permisos del rol */}
           <div
             className="mt-4 p-3 rounded-lg"
             style={{ background: esAdmin ? 'rgba(59,130,246,0.08)' : 'rgba(107,114,128,0.08)', borderRadius: 8 }}
@@ -430,7 +419,6 @@ export function TicketDetail({ ticket, onClose, usuario, onTicketUpdated }: Tick
   );
 }
 
-// ... (Mantén tus componentes SelectorMeta y FilaMeta exactamente igual) ...
 function SelectorMeta({
   value, options, onChange, colorMap,
 }: {

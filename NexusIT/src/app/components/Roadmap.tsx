@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+// 1. CORREGIDO: Importación correcta de la API_URL desde la carpeta de configuración superior
+import { API_URL } from '../config';
 
 const INICIO_TIMELINE = new Date('2026-05-01');
 const FIN_TIMELINE = new Date('2026-09-01');
@@ -16,7 +18,6 @@ function pct(offset: number) {
 const MESES = ['Mayo', 'Jun', 'Jul', 'Ago'];
 const OFFSETS_MESES = [0, 31, 61, 92];
 
-// 1. DICCIONARIO DE PORCENTAJES SEGÚN EL ESTADO
 const PESO_ESTADO: Record<string, number> = {
   'backlog': 0,
   'en_progreso': 25,
@@ -38,10 +39,11 @@ export function Roadmap() {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
+        // 2. CORREGIDO: URLs estáticas sustituidas por la variable centralizada `${API_URL}`
         const [resProyectos, resEquipo, resTickets] = await Promise.all([
-          fetch('http://localhost:5000/api/proyectos'),
-          fetch('http://localhost:5000/api/usuarios'),
-          fetch('http://localhost:5000/api/tickets')
+          fetch(`${API_URL}/proyectos`),
+          fetch(`${API_URL}/usuarios`),
+          fetch(`${API_URL}/tickets`)
         ]);
 
         const dataProyectos = await resProyectos.json();
@@ -50,26 +52,19 @@ export function Roadmap() {
 
         console.log("=== DATOS DESDE EL BACKEND ===");
         console.log("Proyectos brutos:", dataProyectos);
-        //console.log("Equipo bruto:", dataEquipo);
-        //console.log("Tickets brutos:", dataTickets);
 
-        // 2. CÁLCULO DINÁMICO DEL PROGRESO DE LOS PROYECTOS
         const proyectosMapeados = dataProyectos.map((p: any) => {
-          // Buscamos todos los tickets que pertenecen a este proyecto
           const ticketsDelProyecto = dataTickets.filter((t: any) => t.proyecto_id === p.id);
           
           let progresoCalculado = 0;
 
           if (ticketsDelProyecto.length > 0) {
-            // Sumamos los porcentajes de todos sus tickets
             const sumaProgreso = ticketsDelProyecto.reduce((acc: number, t: any) => {
               return acc + (PESO_ESTADO[t.estado] || 0);
             }, 0);
             
-            // Sacamos el promedio
             progresoCalculado = Math.round(sumaProgreso / ticketsDelProyecto.length);
           } else {
-            // Si el proyecto aún no tiene tickets, usamos el valor manual de la BD (o 0)
             progresoCalculado = p.progreso || 0; 
           }
 
@@ -77,9 +72,9 @@ export function Roadmap() {
             ...p,
             color: p.color || '#3b82f6',
             hitos: p.hitos || [], 
-            fecha_inicio: p.fecha_inicio || '2026-05-01', // <-- Fecha inicio por defecto
+            fecha_inicio: p.fecha_inicio || '2026-05-01', 
             fecha_fin: p.fecha_fin || '2026-08-31',
-            progreso: progresoCalculado // <-- Asignamos el valor automático
+            progreso: progresoCalculado 
           };
         });
 
@@ -115,7 +110,6 @@ export function Roadmap() {
 
   return (
     <div className="flex-1 overflow-auto p-5 space-y-6">
-      {/* Cronograma Gantt */}
       <div
         className="rounded-xl border overflow-hidden"
         style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
@@ -137,7 +131,6 @@ export function Roadmap() {
         </div>
 
         <div className="px-5 pb-5 pt-3">
-          {/* Regla de meses */}
           <div className="flex mb-4 relative" style={{ marginLeft: 168 }}>
             {MESES.map((m, i) => (
               <div
@@ -158,7 +151,6 @@ export function Roadmap() {
             <div style={{ height: 20 }} />
           </div>
 
-          {/* Filas Gantt */}
           <div className="flex flex-col gap-3">
             {proyectos.map(p => (
               <div key={p.id} className="flex items-center gap-4">
@@ -170,7 +162,6 @@ export function Roadmap() {
                 </div>
 
                 <div className="flex-1 relative" style={{ height: 28 }}>
-                  {/* Líneas de cuadrícula */}
                   {OFFSETS_MESES.map((mo, i) => (
                     <div
                       key={i}
@@ -179,7 +170,6 @@ export function Roadmap() {
                     />
                   ))}
 
-                  {/* Línea de hoy */}
                   <div
                     className="absolute top-0 bottom-0 border-l-2 z-10"
                     style={{ left: `${pct(offsetHoy)}%`, borderColor: '#ef4444', opacity: 0.7 }}
@@ -192,7 +182,6 @@ export function Roadmap() {
                     </div>
                   </div>
 
-                  {/* Fondo de barra */}
                   <div
                     className="absolute inset-y-0 rounded-full"
                     style={{
@@ -202,7 +191,6 @@ export function Roadmap() {
                     }}
                   />
 
-                  {/* Progreso */}
                   <div
                     className="absolute inset-y-1 rounded-full"
                     style={{
@@ -213,7 +201,6 @@ export function Roadmap() {
                     }}
                   />
 
-                  {/* % */}
                   <div
                     className="absolute right-0 top-1/2 -translate-y-1/2 -translate-x-2"
                     style={{ fontSize: 9, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}
@@ -221,7 +208,6 @@ export function Roadmap() {
                     {p.progreso}%
                   </div>
 
-                  {/* Hitos */}
                   {p.hitos.map((h: any) => (
                     <div
                       key={h.nombre}
@@ -244,7 +230,6 @@ export function Roadmap() {
         </div>
       </div>
 
-      {/* Asignación del equipo */}
       <div
         className="rounded-xl border overflow-hidden"
         style={{ background: 'var(--card)', borderColor: 'var(--border)' }}

@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { Search, Sun, Moon, X, Loader2 } from "lucide-react";
 import { type Usuario } from "./data";
+// 1. CORREGIDO: Importación unificada de la API_URL desde la ruta relativa correspondiente
+import { API_URL } from '../config';
 
-// Cambiamos el tipo para que acepte el objeto completo del ticket
 interface TopBarProps {
   titulo: string;
   subtitulo?: string;
   darkMode: boolean;
   onToggleDark: () => void;
-  onTicketSelect: (ticket: any) => void; // 👈 Ahora recibe un objeto 'any' en lugar de un 'string'
+  onTicketSelect: (ticket: any) => void; 
   usuario: Usuario;
 }
 
-// Mapas de traducción para el frontend
 const mapaEstados: Record<string, string> = {
   'backlog': 'Backlog',
   'en_progreso': 'En Progreso',
@@ -45,10 +45,10 @@ export function TopBar({ titulo, subtitulo, darkMode, onToggleDark, onTicketSele
   useEffect(() => {
     if (busquedaAbierta) {
       setCargandoBusqueda(true);
-      fetch('http://localhost:5000/api/tickets')
+      // 2. CORREGIDO: Se cambiaron las comillas simples por backticks para habilitar la interpolación de `${API_URL}`
+      fetch(`${API_URL}/tickets`)
         .then(res => res.json())
         .then(data => {
-          // Mapeamos los datos de MySQL al formato del Frontend antes de guardarlos
           const ticketsMapeados = data.map((t: any) => {
             const iniciales = t.asignado_nombre 
               ? t.asignado_nombre.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
@@ -157,7 +157,6 @@ export function TopBar({ titulo, subtitulo, darkMode, onToggleDark, onTicketSele
                   <button
                     key={t.id}
                     onClick={() => { 
-                      // 👈 AQUÍ ESTÁ LA MAGIA: Enviamos el objeto 't' completo al padre
                       onTicketSelect(t); 
                       setBusquedaAbierta(false); 
                     }}

@@ -21,13 +21,20 @@ db.connect(err => {
 
 app.post('/api/login', (req, res) => {
     const { email, contrasena } = req.body;
+    
+    // 💡 ESTO TE DIRÁ EN TU TERMINAL DE NODE QUÉ TE ESTÁ MANDANDO EL FRONTEND
+    console.log(`[LOGIN INTENT] Intentando conectar con Email: ${email} | Contraseña introducida: ${contrasena}`);
+
     db.query('SELECT id, nombre, rol, puesto FROM usuarios WHERE email = ? AND contrasena = ?',
         [email, contrasena], (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
+        
         if (results.length > 0) {
+            console.log(`[LOGIN SUCCESS] ¡Usuario ${results[0].nombre} autenticado correctamente!`);
             res.json({ success: true, usuario: results[0] });
         } else {
-            res.status(401).json({ success: false, message: 'Credenciales incorrectas' });
+            console.log(`[LOGIN FAILED] No se encontró coincidencia para ${email}`);
+            res.status(401).json({ success: false, message: 'Credenciales incorrectas. Verifica tu contraseña en la tabla de MySQL.' });
         }
     });
 });

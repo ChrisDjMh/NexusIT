@@ -17,11 +17,51 @@ export interface Usuario {
 // 🚨 CORREOS CORREGIDOS PARA ENCAJAR CON TU BASE DE DATOS
 // ========================================================
 export const EQUIPO: Usuario[] = [
-  { id: '1', nombre: 'Vladimir',  iniciales: 'VL', rol: 'admin',     cargo: 'Gestor de Proyectos',  color: '#3b82f6', email: 'vladimir' },
-  { id: '2', nombre: 'Christian', iniciales: 'CH', rol: 'ingeniero', cargo: 'Ing. Front-End',       color: '#8b5cf6', email: 'christian' },
-  { id: '3', nombre: 'Braulio',   iniciales: 'BR', rol: 'ingeniero', cargo: 'Ing. Base de Datos',   color: '#10b981', email: 'braulio' },
-  { id: '4', nombre: 'Fernando',  iniciales: 'FE', rol: 'ingeniero', cargo: 'Ing. Back-End',        color: '#f59e0b', email: 'fernando' },
-  { id: '5', nombre: 'Derek',     iniciales: 'DK', rol: 'ingeniero', cargo: 'QA / Tester',          color: '#ef4444', email: 'derek' },
+  { 
+    id: '1', 
+    nombre: 'Vladimir',  
+    iniciales: 'VL', 
+    rol: 'admin',    
+    cargo: 'Gestor de Proyectos',  
+    color: '#3b82f6', 
+    email: 'vladimir@empresa.com' // 👈 Sincronizado con MySQL
+  },
+  { 
+    id: '2', 
+    nombre: 'Christian', 
+    iniciales: 'CH', 
+    rol: 'ingeniero', 
+    cargo: 'Ing. de Front-End',       
+    color: '#8b5cf6', 
+    email: 'christian@empresa.com' // 👈 Sincronizado con MySQL
+  },
+  { 
+    id: '3', 
+    nombre: 'Braulio',   
+    iniciales: 'BR', 
+    rol: 'ingeniero', 
+    cargo: 'Ing. de Base de Datos',   
+    color: '#10b981', 
+    email: 'braulio@empresa.com' // 👈 Sincronizado con MySQL
+  },
+  { 
+    id: '4', 
+    nombre: 'Fernando',  
+    iniciales: 'FE', 
+    rol: 'ingeniero', 
+    cargo: 'Back-End',        
+    color: '#f59e0b', 
+    email: 'fernando@empresa.com' // 👈 Sincronizado con MySQL
+  },
+  { 
+    id: '5', 
+    nombre: 'Derek',     
+    iniciales: 'DK', 
+    rol: 'ingeniero', 
+    cargo: 'QA',          
+    color: '#ef4444', 
+    email: 'derek@empresa.com' // 👈 Sincronizado con MySQL
+  },
 ];
 
 export interface RegistroActividad {
