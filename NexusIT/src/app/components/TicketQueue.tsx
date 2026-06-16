@@ -414,7 +414,7 @@ export function TicketQueue({ onTicketSelect, usuario, onCargarTickets }: Ticket
       setTickets(prev => prev.map(t =>
         t.id === ticketIdFront ? { ...t, estado: nuevoEstadoFront } : t
       ));
-      // 2. CORREGIDO: Se reemplazó el string fijo "http://localhost:5000/api" por la variable global "API_URL"
+
       await fetch(`${API_URL}/tickets/${ticket.dbId}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
