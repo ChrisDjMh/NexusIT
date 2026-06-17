@@ -1,5 +1,5 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "nexusIT",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -87,7 +87,7 @@
       "vite": "6.3.5"
     }
   },
-  "description": "This is a code bundle for Tech Support Ticket Dashboard. The original project is available at https://www.figma.com/design/3igvZStwesjBrHP5Gl2S6Y/Tech-Support-Ticket-Dashboard.",
+  "description": "",
   "main": "index.js",
   "keywords": [],
   "author": "",

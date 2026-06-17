@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { X, Plus, FolderPlus } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { type Usuario } from "./data";
-// 1. CORREGIDO: Importación correcta de la API_URL desde la carpeta superior
 import { API_URL } from '../config';
 
 interface QuickCreateProps {
@@ -30,16 +29,20 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
   const [asignado, setAsignado] = useState('Sin asignar');
   const [descripcion, setDescripcion] = useState('');
   const [fechaLimite, setFechaLimite] = useState('');
-  const hoy = new Date().toISOString().split('T')[0];
   const [proyectos, setProyectos] = useState<{ id: number; nombre: string }[]>([]);
   const [proyectoId, setProyectoId] = useState<number | null>(null);
   const [proyecto, setProyecto] = useState('');
   const [creandoProyecto, setCreandoProyecto] = useState(false);
   const [nuevoProyecto, setNuevoProyecto] = useState('');
 
+  // Fechas: Hoy y un mes en el futuro
+  const hoy = new Date().toISOString().split('T')[0];
+  const unMesDespues = new Date();
+  unMesDespues.setMonth(unMesDespues.getMonth() + 1);
+  const maxFecha = unMesDespues.toISOString().split('T')[0];
+
   useEffect(() => {
     if (!abierto) return;
-    // 2. CORREGIDO: URL estática reemplazada por la variable de configuración
     fetch(`${API_URL}/proyectos`)
       .then(r => r.json())
       .then(data => {
@@ -60,7 +63,6 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
       return;
     }
     try {
-      // 3. CORREGIDO: URL estática reemplazada por la variable de configuración
       const res = await fetch(`${API_URL}/proyectos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +88,6 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
     const codigo = `IT-${Date.now().toString().slice(-4)}`;
 
     try {
-      // 4. CORREGIDO: URL estática reemplazada por la variable de configuración
       const res = await fetch(`${API_URL}/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -159,12 +160,14 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-y-auto">
             <div className="p-5 flex flex-col gap-4">
 
+              {/* LÍMITE DE 30 CARACTERES EN EL TÍTULO */}
               <input
                 autoFocus
                 required
+                maxLength={30}
                 value={titulo}
                 onChange={e => setTitulo(e.target.value)}
-                placeholder="Título del ticket…"
+                placeholder="Título del ticket… (máx. 30)"
                 className="w-full rounded-lg border px-3 py-2.5"
                 style={{
                   background: 'var(--muted)', borderColor: 'var(--border)',
@@ -174,10 +177,12 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
                 onBlur={e => (e.target.style.borderColor = 'var(--border)')}
               />
 
+              {/* LÍMITE DE 150 CARACTERES EN LA DESCRIPCIÓN */}
               <textarea
+                maxLength={150}
                 value={descripcion}
                 onChange={e => setDescripcion(e.target.value)}
-                placeholder="Descripción del problema…"
+                placeholder="Descripción del problema… (máx. 150)"
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2.5 resize-none"
                 style={{
@@ -199,8 +204,10 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
                 <Campo label="Proyecto">
                   {creandoProyecto ? (
                     <div className="flex gap-1.5">
+                      {/* LÍMITE DE 30 CARACTERES EN EL NUEVO PROYECTO */}
                       <input
                         autoFocus
+                        maxLength={30}
                         value={nuevoProyecto}
                         onChange={e => setNuevoProyecto(e.target.value)}
                         onKeyDown={e => {
@@ -208,7 +215,7 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
                           if (e.key === 'Escape') { setCreandoProyecto(false); setNuevoProyecto(''); }
                         }}
                         onBlur={handleAgregarProyecto}
-                        placeholder="Nombre del proyecto…"
+                        placeholder="Nombre… (máx. 30)"
                         className="flex-1 rounded-lg border px-2 py-1.5"
                         style={{
                           background: 'var(--muted)', borderColor: 'var(--color-cyber-blue)',
@@ -269,9 +276,11 @@ export function QuickCreate({ abierto, onCerrar, usuario, onTicketCreado }: Quic
                 </Campo>
 
                 <Campo label="Vencimiento">
+                  {/* RANGO DE VENCIMIENTO: MÍNIMO HOY, MÁXIMO 1 MES */}
                   <input
                     type="date"
-                    min={hoy} 
+                    min={hoy}
+                    max={maxFecha}
                     value={fechaLimite}
                     onChange={e => setFechaLimite(e.target.value)}
                     className="w-full rounded-lg border px-3 py-2 cursor-pointer"
